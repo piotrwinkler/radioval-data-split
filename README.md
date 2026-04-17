@@ -11,28 +11,28 @@ This repository builds four output datasets from a harmonized clinical source fi
 - `ai_validation.csv`
 - `train.csv`
 
-The split pipeline is orchestrated by [split_data.py](/home/piotr/projects/radioval-data-split/split_data.py).  
+The split pipeline is orchestrated by `split_data.py`.  
 Split-specific logic is implemented in:
 
-- [data_split/split_data_5152.py](/home/piotr/projects/radioval-data-split/data_split/split_data_5152.py)
-- [data_split/split_data_53.py](/home/piotr/projects/radioval-data-split/data_split/split_data_53.py)
-- [data_split/split_data_ai_validation.py](/home/piotr/projects/radioval-data-split/data_split/split_data_ai_validation.py)
-- [data_split/split_data_train.py](/home/piotr/projects/radioval-data-split/data_split/split_data_train.py)
+- `data_split/split_data_5152.py`
+- `data_split/split_data_53.py`
+- `data_split/split_data_ai_validation.py`
+- `data_split/split_data_train.py`
 
-Shared helper functions live in [split_utils.py](/home/piotr/projects/radioval-data-split/split_utils.py).
+Shared helper functions live in `split_utils.py`.
 
 ## Required Input
 
-The split pipeline expects the following input file in the repository root:
+The split pipeline expects the following input file in the project root:
 
-- [radioval_harmonized_new.csv](/home/piotr/projects/radioval-data-split/radioval_harmonized_new.csv)
+- `radioval_harmonized_new.csv`
 
 This is the file used by all split scripts and by the verification script.
 
-If you need to regenerate it from [radioval_harmonized.csv](/home/piotr/projects/radioval-data-split/radioval_harmonized.csv), use:
+If you need to regenerate it from `radioval_harmonized.csv`, make sure both files are located in the project root and run:
 
 ```bash
-python normalize_split_column.py
+python add_missing_data.py
 ```
 
 ## How To Run The Split Pipeline
@@ -52,16 +52,14 @@ This runs the split jobs in the correct dependency order:
 
 ## Output Files
 
-All generated CSV files are written to:
-
-- [output_files](/home/piotr/projects/radioval-data-split/output_files)
+All generated CSV files are written to `output_files/` in the project root.
 
 The pipeline produces:
 
-- [output_files/clinical_validation_5152.csv](/home/piotr/projects/radioval-data-split/output_files/clinical_validation_5152.csv)
-- [output_files/clinical_validation_53.csv](/home/piotr/projects/radioval-data-split/output_files/clinical_validation_53.csv)
-- [output_files/ai_validation.csv](/home/piotr/projects/radioval-data-split/output_files/ai_validation.csv)
-- [output_files/train.csv](/home/piotr/projects/radioval-data-split/output_files/train.csv)
+- `output_files/clinical_validation_5152.csv`
+- `output_files/clinical_validation_53.csv`
+- `output_files/ai_validation.csv`
+- `output_files/train.csv`
 
 ## How To Run Validation
 
@@ -77,12 +75,12 @@ The validation script checks:
 - unique case counts on the `(dataset, patient_id)` level
 - per-center statistics
 - pairwise split disjointness
-- coverage against `radioval_harmonized_new.csv`
+- coverage against `radioval_harmonized_new.csv` from the project root
 - missing and extra patient IDs per dataset
 
 ## Typical Workflow
 
-1. Place or update `radioval_harmonized_new.csv` in the repository root.
+1. Place or update `radioval_harmonized.csv` and `radioval_harmonized_new.csv` in the project root.
 2. Run the split pipeline:
 
 ```bash

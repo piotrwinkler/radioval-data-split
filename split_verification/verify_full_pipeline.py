@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import os
 from collections import Counter, defaultdict
 from itertools import combinations
 from pathlib import Path
@@ -19,6 +20,12 @@ SPLIT_FILES = {
     "ai_validation": BASE_DIR / "output_files" / "ai_validation.csv",
     "train": BASE_DIR / "output_files" / "train.csv",
 }
+
+ANSI_RESET = "\033[0m"
+ANSI_BOLD = "\033[1m"
+ANSI_RED = "\033[31m"
+ANSI_YELLOW = "\033[33m"
+ANSI_GREEN = "\033[32m"
 
 
 def load_rows(csv_path: Path) -> list[dict[str, str]]:
@@ -73,6 +80,25 @@ def build_coverage_status(missing_case_count: int, extra_case_count: int) -> str
     return "PASS"
 
 
+def supports_color() -> bool:
+    return os.getenv("TERM") not in {None, "dumb"} and os.isatty(1)
+
+
+def colorize_status(status: str) -> str:
+    if not supports_color():
+        return status
+
+    color_by_status = {
+        "PASS": ANSI_GREEN,
+        "WARN": ANSI_YELLOW,
+        "FAIL": ANSI_RED,
+    }
+    color = color_by_status.get(status, "")
+    if not color:
+        return status
+    return f"{ANSI_BOLD}{color}{status}{ANSI_RESET}"
+
+
 def main() -> None:
     rows_by_split: dict[str, list[dict[str, str]]] = {}
     case_keys_by_split: dict[str, set[tuple[str, str]]] = {}
@@ -118,9 +144,9 @@ def main() -> None:
     print(f"Combined split total rows: {len(combined_split_rows)}")
     print(f"Row count delta (splits - source): {len(combined_split_rows) - len(source_rows)}")
     if len(combined_split_rows) == len(source_rows):
-        print("Row count status: PASS")
+        print(f"Row count status: {colorize_status('PASS')}")
     else:
-        print("Row count status: WARN")
+        print(f"Row count status: {colorize_status('WARN')}")
 
     source_patient_ids_by_dataset = collect_patient_ids_by_dataset(source_rows)
     split_patient_ids_by_dataset = collect_patient_ids_by_dataset(combined_split_rows)
@@ -138,7 +164,7 @@ def main() -> None:
         )
 
         print(
-            f"{dataset_name}: status={status}, source_cases={len(source_patient_ids)}, "
+            f"{dataset_name}: status={colorize_status(status)}, source_cases={len(source_patient_ids)}, "
             f"split_cases={len(split_patient_ids)}, "
             f"missing_cases={len(missing_patient_ids)}, "
             f"extra_cases={len(extra_patient_ids)}"

@@ -1,4 +1,4 @@
-"""Split method: build clinical_validation_53.csv from radioval_harmonized_new.csv by combining fixed split=53 cohorts for HULAFE and MUW, latest-case cohorts for GUMED/HUH/AFI/ASU, and excluding all cases already present in clinical_validation_5152.csv."""
+"""Split method: build clinical_validation_53.csv from radioval_harmonized_new.csv by combining fixed split=53 cohorts for HULAFE, MUW, and GUMED with latest-case cohorts for GUMED/HUH/AFI/ASU, and excluding all cases already present in clinical_validation_5152.csv."""
 
 from __future__ import annotations
 
@@ -32,9 +32,6 @@ LATEST_CASES_BY_DATASET = {
     "AFI": 34,
     "ASU": 40,
 }
-
-SYNTHETIC_GUMED_CASE_COUNT = 29
-SYNTHETIC_GUMED_PATIENT_ID_TEMPLATE = "RV_03_{index:05d}_WP53"
 
 
 def split_contains_tag(split_value: str, split_tag: str) -> bool:
@@ -102,20 +99,7 @@ def select_latest_dataset_rows(
     )
 
 
-def build_synthetic_gumed_rows(fieldnames: list[str]) -> list[dict[str, str]]:
-    synthetic_rows: list[dict[str, str]] = []
-
-    for index in range(1, SYNTHETIC_GUMED_CASE_COUNT + 1):
-        row = {fieldname: "" for fieldname in fieldnames}
-        row[PATIENT_ID_KEY] = SYNTHETIC_GUMED_PATIENT_ID_TEMPLATE.format(index=index)
-        row[DATASET_KEY] = "GUMED"
-        synthetic_rows.append(row)
-
-    return synthetic_rows
-
-
 def build_clinical_validation_53(
-    fieldnames: list[str],
     rows: list[dict[str, str]],
     excluded_cases: set[tuple[str, str]],
 ) -> tuple[list[dict[str, str]], dict[str, dict[str, int]]]:
@@ -124,8 +108,15 @@ def build_clinical_validation_53(
 
     hulafe_rows = select_fixed_split_rows(rows, "HULAFE", "53", excluded_cases)
     muw_rows = select_fixed_split_rows(rows, "MUW", "53", excluded_cases)
+    gumed_fixed_rows = select_fixed_split_rows(rows, "GUMED", "53", excluded_cases)
     selected_rows.extend(hulafe_rows)
     selected_rows.extend(muw_rows)
+    selected_rows.extend(gumed_fixed_rows)
+    selected_case_keys = {
+        (row[DATASET_KEY], row[PATIENT_ID_KEY])
+        for row in selected_rows
+        if row[DATASET_KEY].strip() and row[PATIENT_ID_KEY].strip()
+    }
 
     selection_summary["HULAFE"] = {
         "rows": len(hulafe_rows),
@@ -135,24 +126,22 @@ def build_clinical_validation_53(
         "rows": len(muw_rows),
         "cases": len({row[PATIENT_ID_KEY] for row in muw_rows}),
     }
+    selection_summary["GUMED"] = {
+        "rows": len(gumed_fixed_rows),
+        "cases": len({row[PATIENT_ID_KEY] for row in gumed_fixed_rows}),
+    }
 
     for dataset_name, target_case_count in LATEST_CASES_BY_DATASET.items():
         dataset_rows = select_latest_dataset_rows(
             rows=rows,
             dataset_name=dataset_name,
             target_case_count=target_case_count,
-            excluded_cases=excluded_cases,
+            excluded_cases=excluded_cases | selected_case_keys,
         )
         selected_rows.extend(dataset_rows)
-        selection_summary[dataset_name] = {
-            "rows": len(dataset_rows),
-            "cases": len({row[PATIENT_ID_KEY] for row in dataset_rows}),
-        }
-
-    synthetic_gumed_rows = build_synthetic_gumed_rows(fieldnames)
-    selected_rows.extend(synthetic_gumed_rows)
-    selection_summary["GUMED"]["rows"] += len(synthetic_gumed_rows)
-    selection_summary["GUMED"]["cases"] += len(synthetic_gumed_rows)
+        selection_summary.setdefault(dataset_name, {"rows": 0, "cases": 0})
+        selection_summary[dataset_name]["rows"] += len(dataset_rows)
+        selection_summary[dataset_name]["cases"] += len({row[PATIENT_ID_KEY] for row in dataset_rows})
 
     return selected_rows, selection_summary
 
@@ -161,7 +150,6 @@ def run() -> dict[str, object]:
     fieldnames, rows = load_rows(INPUT_CSV_PATH)
     excluded_cases = load_excluded_cases(EXCLUDED_CASES_CSV_PATH)
     selected_rows, selection_summary = build_clinical_validation_53(
-        fieldnames=fieldnames,
         rows=rows,
         excluded_cases=excluded_cases,
     )

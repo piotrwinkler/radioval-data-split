@@ -1,4 +1,4 @@
-"""Normalize the split column in radioval_harmonized.csv and write the result to a new CSV file."""
+"""Normalize split assignments in radioval_harmonized.csv, append missing technical GUMED cases, and write the result to radioval_harmonized_new.csv."""
 
 from __future__ import annotations
 
@@ -67,6 +67,11 @@ MUW_SPLIT_MAPPING = {
     "CV": "53",
 }
 
+GUMED_MISSING_PATIENT_IDS = [
+    f"RV_03_{index:05d}_WP53"
+    for index in range(1, 30)
+]
+
 
 def load_rows(csv_path: Path) -> tuple[list[str], list[dict[str, str]]]:
     with csv_path.open(newline="", encoding="utf-8-sig") as csv_file:
@@ -104,6 +109,30 @@ def normalize_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
     return normalized_rows
 
 
+def append_missing_gumed_rows(
+    fieldnames: list[str],
+    rows: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    existing_case_keys = {
+        (row.get(DATASET_KEY, "").strip(), row.get(PATIENT_ID_KEY, "").strip())
+        for row in rows
+    }
+    completed_rows = list(rows)
+
+    for patient_id in GUMED_MISSING_PATIENT_IDS:
+        case_key = ("GUMED", patient_id)
+        if case_key in existing_case_keys:
+            continue
+
+        missing_row = {fieldname: "" for fieldname in fieldnames}
+        missing_row[DATASET_KEY] = "GUMED"
+        missing_row[PATIENT_ID_KEY] = patient_id
+        missing_row[SPLIT_KEY] = "53"
+        completed_rows.append(missing_row)
+
+    return completed_rows
+
+
 def write_rows(csv_path: Path, fieldnames: list[str], rows: list[dict[str, str]]) -> None:
     with csv_path.open("w", newline="", encoding="utf-8-sig") as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
@@ -120,18 +149,19 @@ def collect_split_summary(rows: list[dict[str, str]]) -> dict[str, dict[str, int
     return {
         dataset: dict(counter)
         for dataset, counter in sorted(split_counts_by_dataset.items())
-        if dataset in {"HULAFE", "KI", "MUW"}
+        if dataset in {"HULAFE", "KI", "MUW", "GUMED"}
     }
 
 
 def main() -> None:
     fieldnames, rows = load_rows(INPUT_CSV_PATH)
     normalized_rows = normalize_rows(rows)
-    write_rows(OUTPUT_CSV_PATH, fieldnames, normalized_rows)
+    completed_rows = append_missing_gumed_rows(fieldnames, normalized_rows)
+    write_rows(OUTPUT_CSV_PATH, fieldnames, completed_rows)
 
-    print(f"Created normalized file: {OUTPUT_CSV_PATH}")
-    print("Updated split summary for HULAFE, KI, and MUW:")
-    for dataset, split_counts in collect_split_summary(normalized_rows).items():
+    print(f"Created enriched file: {OUTPUT_CSV_PATH}")
+    print("Updated split summary for HULAFE, KI, MUW, and GUMED:")
+    for dataset, split_counts in collect_split_summary(completed_rows).items():
         print(f"{dataset}: {split_counts}")
 
 
