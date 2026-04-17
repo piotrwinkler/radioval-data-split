@@ -86,7 +86,7 @@ The validation script checks:
   - `AFI`: `ai_validation` contains 71 cases instead of the previously declared 93.
   - `HULAFE`: `train` contains 219 cases instead of the previously declared 204.
   - `MUW`: `train` contains 397 cases instead of the previously declared 398.
-- Some `AFI` cases expected from the harmonized data may not be visible on XNAT.
+- Some `AFI` cases expected from the harmonized data are currently not be visible on XNAT.
 - `ASU` is currently not present in either the harmonized source file or XNAT.
 
 ## Typical Workflows
