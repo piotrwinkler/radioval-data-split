@@ -89,9 +89,13 @@ The validation script checks:
 - Some `AFI` cases expected from the harmonized data may not be visible on XNAT.
 - `ASU` is currently not present in either the harmonized source file or XNAT.
 
-## Typical Workflow
+## Typical Workflows
 
-1. Place or update `radioval_harmonized.csv` and `radioval_harmonized_new.csv` in the project root.
+### Case 1: `radioval_harmonized_new.csv` already exists
+
+Use this path if the prepared source file is already present in the project root.
+
+1. Make sure `radioval_harmonized_new.csv` is in the project root.
 2. Run the split pipeline:
 
 ```bash
@@ -105,3 +109,28 @@ python split_verification/verify_full_pipeline.py
 ```
 
 4. Inspect the generated CSV files in `output_files/`.
+
+### Case 2: only `radioval_harmonized.csv` is available
+
+Use this path if you need to regenerate the prepared source file first.
+
+1. Place `radioval_harmonized.csv` in the project root.
+2. Generate `radioval_harmonized_new.csv`:
+
+```bash
+python add_missing_data.py
+```
+
+3. Run the split pipeline:
+
+```bash
+python split_data.py
+```
+
+4. Run the verification step:
+
+```bash
+python split_verification/verify_full_pipeline.py
+```
+
+5. Inspect the generated CSV files in `output_files/`.
