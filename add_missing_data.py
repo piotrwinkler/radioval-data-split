@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import re
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -71,6 +72,7 @@ GUMED_MISSING_PATIENT_IDS = [
     f"RV_03_{index:05d}_WP53"
     for index in range(1, 30)
 ]
+PATIENT_ID_SUFFIX_PATTERN = re.compile(r"_(1|2)$")
 
 
 def load_rows(csv_path: Path) -> tuple[list[str], list[dict[str, str]]]:
@@ -79,9 +81,13 @@ def load_rows(csv_path: Path) -> tuple[list[str], list[dict[str, str]]]:
         return reader.fieldnames or [], list(reader)
 
 
+def normalize_patient_id(patient_id: str) -> str:
+    return PATIENT_ID_SUFFIX_PATTERN.sub("", patient_id.strip())
+
+
 def normalize_split_value(row: dict[str, str]) -> str:
     dataset = row[DATASET_KEY]
-    patient_id = row[PATIENT_ID_KEY]
+    patient_id = normalize_patient_id(row[PATIENT_ID_KEY])
     current_split = row[SPLIT_KEY]
 
     if dataset == "HULAFE":
@@ -103,6 +109,7 @@ def normalize_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
 
     for row in rows:
         normalized_row = dict(row)
+        normalized_row[PATIENT_ID_KEY] = normalize_patient_id(row[PATIENT_ID_KEY])
         normalized_row[SPLIT_KEY] = normalize_split_value(row)
         normalized_rows.append(normalized_row)
 

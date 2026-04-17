@@ -78,6 +78,17 @@ The validation script checks:
 - coverage against `radioval_harmonized_new.csv` from the project root
 - missing and extra patient IDs per dataset
 
+## Important Notes
+
+- Duplicate `patient_id` values are treated as one case at the `(dataset, patient_id)` level, even if multiple rows exist for the same patient.
+- Current observed differences worth keeping in mind:
+  - `UZSM`: `ai_validation` contains 95 cases instead of the previously declared 94.
+  - `AFI`: `ai_validation` contains 71 cases instead of the previously declared 93.
+  - `HULAFE`: `train` contains 219 cases instead of the previously declared 204.
+  - `MUW`: `train` contains 397 cases instead of the previously declared 398.
+- Some `AFI` cases expected from the harmonized data may not be visible on XNAT.
+- `ASU` is currently not present in either the harmonized source file or XNAT.
+
 ## Typical Workflow
 
 1. Place or update `radioval_harmonized.csv` and `radioval_harmonized_new.csv` in the project root.
