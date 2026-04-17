@@ -14,6 +14,17 @@ from typing import Callable
 
 Row = dict[str, str]
 DATE_FORMATS = ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y")
+DIVERSITY_STRATIFIER_WEIGHTS = {
+    "imaging_modality": 1.0,
+    "pcr": 1.0,
+    "tumor_size_ct": 1.0,
+    "lesion_presentation": 1.0,
+    "age_range": 1.0,
+    "menopausal_status": 1.0,
+    "tumor_subtype": 1.0,
+    "multifocality": 1.0,
+    "race_ethnicity_proxy": 1.0,
+}
 
 
 @dataclass(frozen=True)
@@ -65,10 +76,6 @@ def first_non_empty(row: Row, aliases: list[str]) -> str:
 
 def direct_stratifier(name: str, aliases: list[str], weight: float = 1.0) -> Stratifier:
     return Stratifier(name=name, extractor=lambda row: first_non_empty(row, aliases), weight=weight)
-
-
-def filter_rows_by_dataset(rows: list[Row], dataset_name: str) -> list[Row]:
-    return [row for row in rows if clean_value(row.get("dataset")) == dataset_name]
 
 
 def row_tiebreaker(row: Row) -> tuple[str, ...]:
@@ -127,38 +134,83 @@ def extract_t_stage(row: Row) -> str:
 
 
 def extract_lesion_presentation(row: Row) -> str:
-    mass_shape = clean_value(row.get("mass_shape"))
+    mass_shape = clean_value(row.get("mass_shape")).lower()
     if mass_shape:
+        if "non mass" in mass_shape:
+            return "nme / non-solid lesion"
         return "solid lesion"
 
     associated_features = clean_value(row.get("associated_features")).lower()
-    if associated_features and associated_features != "unknown":
+    if associated_features and associated_features not in {"0", "unknown"}:
         return "nme / non-solid lesion"
 
     return ""
 
 
-def extract_tumor_subtype(row: Row) -> str:
-    raw_value = first_non_empty(row, ["tumor_subtype", "intrinsic_subtype", "s_biological_subtype"]).lower()
-    if not raw_value:
+def normalize_tumor_subtype_value(raw_value: str) -> str:
+    normalized_value = raw_value.lower()
+    if not normalized_value:
         return ""
 
-    if "luminal_a" in raw_value or raw_value == "luminal a":
+    # Ignore legend-like values that encode the full category mapping rather than a case label.
+    if (
+        "1: luminal a" in normalized_value
+        and "2: luminal b" in normalized_value
+        and "3: triple negative" in normalized_value
+    ):
+        return ""
+
+    if "luminal a" in normalized_value or "luminal_a" in normalized_value or normalized_value == "1":
         return "Luminal A"
-    if "luminal_b" in raw_value or raw_value == "luminal b":
+    if (
+        "luminal b" in normalized_value
+        or "luminal_b" in normalized_value
+        or normalized_value in {"2", "3"}
+    ):
         return "Luminal B"
-    if "triple_negative" in raw_value or "triple negative" in raw_value or "basal" in raw_value:
+    if (
+        "triple negative" in normalized_value
+        or "triple_negative" in normalized_value
+        or "tnbc" in normalized_value
+        or "basal" in normalized_value
+        or normalized_value == "5"
+    ):
         return "Basal-like / triple negative"
-    if "her2" in raw_value:
+    if (
+        "her2+ enriched" in normalized_value
+        or "her2 enriched" in normalized_value
+        or "her2-enriched" in normalized_value
+        or "her2 pure" in normalized_value
+        or "her2+ pure" in normalized_value
+        or "her2_pure" in normalized_value
+        or normalized_value == "4"
+    ):
         return "HER2-positive"
 
     return raw_value
+
+
+def extract_tumor_subtype(row: Row) -> str:
+    for column_name in ["tumor_subtype", "intrinsic_subtype", "s_biological_subtype"]:
+        raw_value = clean_value(row.get(column_name))
+        normalized_value = normalize_tumor_subtype_value(raw_value)
+        if normalized_value:
+            return normalized_value
+    return ""
 
 
 def extract_multifocality(row: Row) -> str:
     value = clean_value(row.get("presence_of_foci")).lower()
     if not value:
         return ""
+    if value == "no":
+        return "single lesion"
+    if value == "yes":
+        return "multifocal lesion"
+    if value.isdigit():
+        if int(value) <= 1:
+            return "single lesion"
+        return "multifocal lesion"
     if "uni" in value:
         return "single lesion"
     if "multi" in value:
@@ -168,20 +220,49 @@ def extract_multifocality(row: Row) -> str:
 
 COMMON_DIVERSITY_STRATIFIERS = [
     direct_stratifier(
-        "image_type",
+        "imaging_modality",
         ["imaging_type"],
-        weight=1.1,
+        weight=DIVERSITY_STRATIFIER_WEIGHTS["imaging_modality"],
     ),
-    Stratifier(name="pcr", extractor=extract_pcr_status, weight=1.4),
-    Stratifier(name="tumor_size_ct", extractor=extract_t_stage, weight=1.2),
-    Stratifier(name="lesion_presentation", extractor=extract_lesion_presentation, weight=1.2),
-    Stratifier(name="age_range", extractor=extract_age_range, weight=1.1),
-    direct_stratifier("menopausal_status", ["menopausal_status"], weight=1.1),
-    Stratifier(name="tumor_subtype", extractor=extract_tumor_subtype, weight=1.4),
-    Stratifier(name="multifocality", extractor=extract_multifocality, weight=1.1),
+    Stratifier(
+        name="pcr",
+        extractor=extract_pcr_status,
+        weight=DIVERSITY_STRATIFIER_WEIGHTS["pcr"],
+    ),
+    Stratifier(
+        name="tumor_size_ct",
+        extractor=extract_t_stage,
+        weight=DIVERSITY_STRATIFIER_WEIGHTS["tumor_size_ct"],
+    ),
+    Stratifier(
+        name="lesion_presentation",
+        extractor=extract_lesion_presentation,
+        weight=DIVERSITY_STRATIFIER_WEIGHTS["lesion_presentation"],
+    ),
+    Stratifier(
+        name="age_range",
+        extractor=extract_age_range,
+        weight=DIVERSITY_STRATIFIER_WEIGHTS["age_range"],
+    ),
+    direct_stratifier(
+        "menopausal_status",
+        ["menopausal_status"],
+        weight=DIVERSITY_STRATIFIER_WEIGHTS["menopausal_status"],
+    ),
+    Stratifier(
+        name="tumor_subtype",
+        extractor=extract_tumor_subtype,
+        weight=DIVERSITY_STRATIFIER_WEIGHTS["tumor_subtype"],
+    ),
+    Stratifier(
+        name="multifocality",
+        extractor=extract_multifocality,
+        weight=DIVERSITY_STRATIFIER_WEIGHTS["multifocality"],
+    ),
     direct_stratifier(
         "race_ethnicity_proxy",
         ["country_of_origin"],
+        weight=DIVERSITY_STRATIFIER_WEIGHTS["race_ethnicity_proxy"],
     ),
 ]
 
@@ -214,22 +295,6 @@ def choose_representative_rows(
     return representative_rows
 
 
-def select_rows_for_patient_ids(
-    rows: list[Row],
-    patient_ids: list[str],
-    stratifiers: list[Stratifier] | None = None,
-    patient_id_key: str = "patient_id",
-    date_key: str = "mri_date",
-) -> list[Row]:
-    representative_rows = choose_representative_rows(
-        rows=[row for row in rows if clean_value(row.get(patient_id_key)) in set(patient_ids)],
-        stratifiers=stratifiers,
-        patient_id_key=patient_id_key,
-        date_key=date_key,
-    )
-    return [representative_rows[patient_id] for patient_id in patient_ids if patient_id in representative_rows]
-
-
 def select_all_rows_for_patient_ids(
     rows: list[Row],
     patient_ids: list[str],
@@ -246,45 +311,6 @@ def select_all_rows_for_patient_ids(
     selected_rows: list[Row] = []
     for patient_id in patient_ids:
         selected_rows.extend(rows_by_patient_id.get(patient_id, []))
-
-    return selected_rows
-
-
-def select_rows_for_patient_id_occurrences(
-    rows: list[Row],
-    patient_ids: list[str],
-    patient_id_key: str = "patient_id",
-    date_key: str = "mri_date",
-) -> list[Row]:
-    patient_id_counts = Counter(patient_ids)
-    rows_by_patient_id: defaultdict[str, list[Row]] = defaultdict(list)
-
-    for row in rows:
-        patient_id = clean_value(row.get(patient_id_key))
-        if patient_id in patient_id_counts:
-            rows_by_patient_id[patient_id].append(row)
-
-    selected_rows_by_patient_id: dict[str, list[Row]] = {}
-    for patient_id, matching_rows in rows_by_patient_id.items():
-        ranked_rows = sorted(
-            matching_rows,
-            key=lambda row: (
-                parse_date(row.get(date_key)),
-                sum(1 for value in row.values() if clean_value(value)),
-                row_tiebreaker(row),
-            ),
-            reverse=True,
-        )
-        selected_rows_by_patient_id[patient_id] = ranked_rows[: patient_id_counts[patient_id]]
-
-    selected_rows: list[Row] = []
-    next_row_index_by_patient_id: Counter[str] = Counter()
-    for patient_id in patient_ids:
-        available_rows = selected_rows_by_patient_id.get(patient_id, [])
-        next_index = next_row_index_by_patient_id[patient_id]
-        if next_index < len(available_rows):
-            selected_rows.append(deepcopy(available_rows[next_index]))
-            next_row_index_by_patient_id[patient_id] += 1
 
     return selected_rows
 
@@ -365,10 +391,11 @@ def score_candidate(
     )
 
 
-def select_diverse_patient_rows(
+def select_diverse_patient_rows_with_quotas(
     rows: list[Row],
-    target_count: int,
+    dataset_case_quota: dict[str, int],
     stratifiers: list[Stratifier],
+    dataset_key: str = "dataset",
     patient_id_key: str = "patient_id",
     date_key: str = "mri_date",
 ) -> tuple[list[Row], list[str], list[str]]:
@@ -378,14 +405,20 @@ def select_diverse_patient_rows(
         patient_id_key=patient_id_key,
         date_key=date_key,
     )
-    representative_rows = list(representative_rows_by_patient.values())
+    representative_rows = [
+        row
+        for row in representative_rows_by_patient.values()
+        if clean_value(row.get(dataset_key)) in dataset_case_quota
+    ]
     active_stratifiers, skipped_stratifiers = get_active_stratifiers(representative_rows, stratifiers)
 
     features_by_patient_id: dict[str, list[tuple[str, str, float]]] = {}
     global_counts: Counter[tuple[str, str]] = Counter()
+    dataset_by_patient_id: dict[str, str] = {}
 
     for row in representative_rows:
         patient_id = clean_value(row.get(patient_id_key))
+        dataset_name = clean_value(row.get(dataset_key))
         patient_features: list[tuple[str, str, float]] = []
 
         for stratifier in active_stratifiers:
@@ -397,19 +430,24 @@ def select_diverse_patient_rows(
             global_counts[(stratifier.name, value)] += 1
 
         features_by_patient_id[patient_id] = patient_features
+        dataset_by_patient_id[patient_id] = dataset_name
 
-    target_size = min(target_count, len(representative_rows))
     selected_rows: list[Row] = []
     selected_patient_ids: set[str] = set()
     selected_counts: Counter[tuple[str, str]] = Counter()
+    selected_case_count_by_dataset: Counter[str] = Counter()
+    total_target_count = sum(dataset_case_quota.values())
 
-    while len(selected_rows) < target_size:
+    while len(selected_rows) < total_target_count:
         best_row: Row | None = None
         best_score: tuple[float, int, int] | None = None
 
         for row in representative_rows:
             patient_id = clean_value(row.get(patient_id_key))
+            dataset_name = dataset_by_patient_id[patient_id]
             if patient_id in selected_patient_ids:
+                continue
+            if selected_case_count_by_dataset[dataset_name] >= dataset_case_quota[dataset_name]:
                 continue
 
             candidate_score = score_candidate(
@@ -427,12 +465,20 @@ def select_diverse_patient_rows(
             break
 
         best_patient_id = clean_value(best_row.get(patient_id_key))
+        best_dataset_name = dataset_by_patient_id[best_patient_id]
         selected_patient_ids.add(best_patient_id)
+        selected_case_count_by_dataset[best_dataset_name] += 1
         selected_rows.append(best_row)
 
         for stratifier_name, value, _ in features_by_patient_id[best_patient_id]:
             selected_counts[(stratifier_name, value)] += 1
 
-    selected_rows.sort(key=lambda row: clean_value(row.get(patient_id_key)))
+    dataset_order = {dataset_name: index for index, dataset_name in enumerate(dataset_case_quota)}
+    selected_rows.sort(
+        key=lambda row: (
+            dataset_order[clean_value(row.get(dataset_key))],
+            clean_value(row.get(patient_id_key)),
+        )
+    )
     active_names = [stratifier.name for stratifier in active_stratifiers]
     return selected_rows, active_names, skipped_stratifiers
