@@ -1,0 +1,39 @@
+[SKIP] Patient 'RV_01_00059' not found in XNAT project 'radioval_hulafe'.
+[SKIP] No scan with type 'DCE' for patient 'RV_01_00066' in project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00089' not found in XNAT project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00097' not found in XNAT project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00103' not found in XNAT project 'radioval_hulafe'.
+[SKIP] No scan with type 'DCE' for patient 'RV_01_00106' in project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00111' not found in XNAT project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00128' not found in XNAT project 'radioval_hulafe'.
+[SKIP] No scan with type 'DCE' for patient 'RV_01_00139' in project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00143' not found in XNAT project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00144' not found in XNAT project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00145' not found in XNAT project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00148' not found in XNAT project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00149' not found in XNAT project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00150' not found in XNAT project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00158' not found in XNAT project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00180' not found in XNAT project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00047' not found in XNAT project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00223' not found in XNAT project 'radioval_hulafe'.
+[SKIP] Patient 'RV_01_00237' has no experiments in XNAT project 'radioval_hulafe' and is treated as missing.
+[SKIP] No scan with type 'DCE' for patient 'RV_01_00280' in project 'radioval_hulafe'.
+[SKIP] No scan with type 'DCE' for patient 'RV_03_00100' in project 'radioval_gumed'.
+[SKIP] Patient 'RV_04_0092' not found in XNAT project 'radioval_uzsm'.
+[SKIP] Patient 'RV_05_00132' has no experiments in XNAT project 'radioval_muw' and is treated as missing.
+[SKIP] Patient 'RV_06_00121' has no experiments in XNAT project 'radioval_huh' and is treated as missing.
+[SKIP] Patient 'RV_06_00149' has no experiments in XNAT project 'radioval_huh' and is treated as missing.
+[SKIP] Patient 'RV_06_00166' has no experiments in XNAT project 'radioval_huh' and is treated as missing.
+[SKIP] Patient 'RV_07_00006' not found in XNAT project 'radioval_afi'.
+[SKIP] Patient 'RV_07_00102' not found in XNAT project 'radioval_afi'.
+[SKIP] Patient 'RV_07_00103' not found in XNAT project 'radioval_afi'.
+[SKIP] Patient 'RV_07_00104' not found in XNAT project 'radioval_afi'.
+[SKIP] Patient 'RV_07_00105' not found in XNAT project 'radioval_afi'.
+[SKIP] Patient 'RV_07_00106' not found in XNAT project 'radioval_afi'.
+[SKIP] Patient 'RV_07_00107' not found in XNAT project 'radioval_afi'.
+[SKIP] Patient 'RV_07_00108' not found in XNAT project 'radioval_afi'.
+[SKIP] Patient 'RV_07_00109' not found in XNAT project 'radioval_afi'.
+[SKIP] Patient 'RV_07_00110' not found in XNAT project 'radioval_afi'.
+[SKIP] Patient 'RV_07_00111' not found in XNAT project 'radioval_afi'.
+[SKIP] Patient 'RV_07_00112' not found in XNAT project 'radioval_afi'.

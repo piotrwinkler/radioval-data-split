@@ -11,7 +11,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-
 Row = dict[str, str]
 DATE_FORMATS = ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y")
 DIVERSITY_STRATIFIER_WEIGHTS = {
@@ -24,6 +23,51 @@ DIVERSITY_STRATIFIER_WEIGHTS = {
     "tumor_subtype": 1.0,
     "multifocality": 1.0,
     "race_ethnicity_proxy": 1.0,
+    "mri_metadata": 1.0,
+    "scan_option": 0.5,
+}
+MRI_METADATA_STRATIFIER_COLUMNS = [
+    "mri_machine_manufacturer",
+    "mri_machine_model",
+    "field_strength",
+    "slice_thickness",
+    "tr_repetition_time",
+    "te_echo_time",
+    "acquisition_method",
+    "scan_option",
+    "anatomical_plane",
+    "medical_facility",
+    "operator_variability",
+    "contrast_agent_types",
+]
+MRI_METADATA_NUMERIC_BINS = {
+    "field_strength": [
+        (1.0, "<=1T"),
+        (1.5, "1.5T"),
+        (3.0, "3T"),
+        (float("inf"), ">3T"),
+    ],
+    "slice_thickness": [
+        (1.0, "<=1 mm"),
+        (1.5, ">1-1.5 mm"),
+        (2.0, ">1.5-2 mm"),
+        (3.0, ">2-3 mm"),
+        (float("inf"), ">3 mm"),
+    ],
+    "tr_repetition_time": [
+        (4.0, "<=4 ms"),
+        (5.0, ">4-5 ms"),
+        (6.0, ">5-6 ms"),
+        (8.0, ">6-8 ms"),
+        (float("inf"), ">8 ms"),
+    ],
+    "te_echo_time": [
+        (1.5, "<=1.5 ms"),
+        (2.0, ">1.5-2 ms"),
+        (2.5, ">2-2.5 ms"),
+        (3.5, ">2.5-3.5 ms"),
+        (float("inf"), ">3.5 ms"),
+    ],
 }
 
 
@@ -76,6 +120,31 @@ def first_non_empty(row: Row, aliases: list[str]) -> str:
 
 def direct_stratifier(name: str, aliases: list[str], weight: float = 1.0) -> Stratifier:
     return Stratifier(name=name, extractor=lambda row: first_non_empty(row, aliases), weight=weight)
+
+
+def parse_numeric_value(value: str | None) -> float | None:
+    cleaned_value = clean_value(value).replace(",", ".")
+    if not cleaned_value:
+        return None
+    try:
+        return float(cleaned_value)
+    except ValueError:
+        return None
+
+
+def numeric_bin_stratifier(name: str, aliases: list[str], weight: float = 1.0) -> Stratifier:
+    def extract_numeric_bin(row: Row) -> str:
+        bins = MRI_METADATA_NUMERIC_BINS[name]
+        for alias in aliases:
+            numeric_value = parse_numeric_value(row.get(alias))
+            if numeric_value is None:
+                continue
+            for upper_bound, label in bins:
+                if numeric_value <= upper_bound:
+                    return label
+        return ""
+
+    return Stratifier(name=name, extractor=extract_numeric_bin, weight=weight)
 
 
 def row_tiebreaker(row: Row) -> tuple[str, ...]:
@@ -264,6 +333,15 @@ COMMON_DIVERSITY_STRATIFIERS = [
         ["country_of_origin"],
         weight=DIVERSITY_STRATIFIER_WEIGHTS["race_ethnicity_proxy"],
     ),
+]
+
+MRI_METADATA_DIVERSITY_STRATIFIERS = [
+    (numeric_bin_stratifier if column_name in MRI_METADATA_NUMERIC_BINS else direct_stratifier)(
+        name=column_name,
+        aliases=[column_name],
+        weight=DIVERSITY_STRATIFIER_WEIGHTS.get(column_name, DIVERSITY_STRATIFIER_WEIGHTS["mri_metadata"]),
+    )
+    for column_name in MRI_METADATA_STRATIFIER_COLUMNS
 ]
 
 

@@ -13,6 +13,7 @@ if str(BASE_DIR) not in sys.path:
 
 from split_utils import (
     COMMON_DIVERSITY_STRATIFIERS,
+    MRI_METADATA_DIVERSITY_STRATIFIERS,
     load_rows,
     select_diverse_patient_rows_with_quotas,
     write_rows,
@@ -86,7 +87,7 @@ def build_clinical_validation_5152(
     selected_patient_rows, active_stratifiers, skipped_stratifiers = select_diverse_patient_rows_with_quotas(
         rows=candidate_rows,
         dataset_case_quota=TARGET_CASES_BY_DATASET,
-        stratifiers=COMMON_DIVERSITY_STRATIFIERS,
+        stratifiers=COMMON_DIVERSITY_STRATIFIERS + MRI_METADATA_DIVERSITY_STRATIFIERS,
         dataset_key=DATASET_KEY,
         patient_id_key=PATIENT_ID_KEY,
     )
